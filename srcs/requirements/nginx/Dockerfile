@@ -1,19 +1,31 @@
-FROM debian:buster
+FROM    debian:buster
 
-RUN apt -y update && apt install -y nginx
+#i install all that i need 
+RUN     apt-get -y update \
+        && apt-get -y upgrade \
+        && apt-get install -y  \
+        systemd \
+        nginx \
+        openssl \
+        vim
 
-RUN mkdir -p /etc/nginx/ssl
+# i expose this port because this is where i will mapped 
+EXPOSE  443
 
-RUN apt install vim -y && apt install curl -y
+# i copy the config of nginx in the repos default
+COPY    ./config/nginx.conf /etc/nginx/sites-available/default
 
-RUN apt install openssl -y
+# i delete the original config file of nginx because i have my own config file
+RUN     rm -rf /etc/nginx/sites-enabled/default
 
-RUN openssl req -x509 -nodes -out /etc/nginx/ssl/inception.crt -keyout /etc/nginx/ssl/inception.key -subj "/C=FR/ST=IDF/L=Paris/O=42/OU=42/CN=login.42.fr/UID=login"
+# i creat an alias from sites-enabled/default to sites-available default, it mean if
+# we execute the file config in sites-enabled it will execute the file config in sites-available/default
+RUN     ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
 
-COPY conf/nginx.conf /etc/nginx/nginx.conf
+RUN     mkdir -p /etc/nginx/ssl
 
-RUN chmod 755 /var/www/html
+RUN     openssl req -newkey rsa:2048 -x509 -days 365 -nodes -keyout /etc/nginx/ssl/services.key -out /etc/nginx/ssl/services.pem \
+        -subj "/C=FR/ST=Paris/L=Paris/O=42, Inc./OU=IT/CN=Inception"
 
-RUN chown -R www-data:www-data /var/www/html
 
-CMD [ "nginx", "-g", "daemon off;" ]
+CMD     ["nginx", "-g", "daemon off;"]
